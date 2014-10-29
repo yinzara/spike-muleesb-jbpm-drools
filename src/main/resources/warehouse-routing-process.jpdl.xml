@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<process description="Warehouse routing example" name="WarehouseRouting" xmlns="http://jbpm.org/4.3/jpdl">
+
+    <mule-receive name="unsortedOrder" endpoint="UnsortedOrders" type="com.mulesoft.mule.droolsbpmexample.Order" var="order">
+        <transition to="sendToDrools" />
+    </mule-receive>
+
+    <mule-send name="sendToDrools" expr="#{order}" endpoint="DroolsEndpoint" exchange-pattern="request-response" var="order">
+        <transition to="sendToWarehouse" />
+    </mule-send>
+    
+    <decision name="sendToWarehouse">
+        <transition to="sendToWarehouseA">
+            <condition expr="#{order.destination == 'WAREHOUSE_A'}" />
+        </transition>
+        <transition to="sendToWarehouseB">
+            <condition expr="#{order.destination == 'WAREHOUSE_B'}" />
+        </transition>
+
+        <transition to="routingFailed" />
+    </decision>
+
+    <mule-send name="sendToWarehouseA"
+          expr="#{order}" endpoint="WarehouseA" exchange-pattern="one-way">
+        <transition to="routingSuccessful" />
+    </mule-send>
+    
+    <mule-send name="sendToWarehouseB"
+          expr="#{order}" endpoint="WarehouseB" exchange-pattern="one-way">
+        <transition to="routingSuccessful" />
+    </mule-send>
+
+    <end name="routingSuccessful" />
+
+    <end name="routingFailed" />
+
+</process>
