@@ -6,7 +6,7 @@ import com.mulesoft.mule.droolsjbpmexample.Order;
 global org.mule.module.bpm.MessageService mule;
 
 # default dialect for the semantic code will be MVEL
-dialect "mvel"
+dialect "java"
  
 declare Order
     @role( event )
@@ -27,4 +27,5 @@ when
 then
     modify( $order ) { setDestination("WAREHOUSE_B") }
 end
+
 

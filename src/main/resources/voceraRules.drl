@@ -1,0 +1,47 @@
+//created on: Nov 1, 2014
+package com.vocera.drools
+
+//list any import classes here.
+import com.vocera.drools.event.Vitals;
+import com.vocera.drools.fact.Patient;
+import com.vocera.drools.fact.Fever;
+import com.vocera.drools.fact.TemperatureThreshold;
+global org.mule.module.bpm.MessageService mule;
+
+//declare any global variables here
+declare Patient
+	@role( fact )
+end
+
+declare TemperatureThreshold
+	@role( fact )
+end
+
+declare Fever
+	@role( fact )
+	@timestamp( started )
+end
+
+declare Vitals
+	@role( event )
+	@timestamp( collected )
+end
+
+
+rule "Patient temperature over 101 degree threshold for 15 minutes with at least 3 readings"
+	lock-on-active
+    when
+	    accumulate(
+	        Vitals( $temp : temperature, $patient : patient , $dateTime : collected ) over window:time( 15m ); 
+	        $avgTemp : average( $temp ),
+	        $oldestReading : min( $dateTime ) ,
+	        $totalReadings : count( this );
+	        $avgTemp > 101,
+	        $totalReadings > 3 )
+    then
+        insertLogical(
+        	new Fever( $patient, $oldestReading )
+        );
+
+end
+

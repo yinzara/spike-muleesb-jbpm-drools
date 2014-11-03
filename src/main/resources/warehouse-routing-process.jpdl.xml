@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<process description="Warehouse routing example" name="WarehouseRouting" xmlns="http://jbpm.org/4.3/jpdl">
-
+<process description="Warehouse routing example" name="WarehouseRouting" xmlns="http://jbpm.org/4.3/jpdl" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://jbpm.org/4.3/jpdl http://grepcode.com/file_/repository.jboss.org/nexus/content/repositories/releases/org.jbpm.jbpm4/jbpm-api/4.3/jpdl-4.3.xsd/?v=source">
+    
     <mule-receive name="unsortedOrder" endpoint="UnsortedOrders" type="com.mulesoft.mule.droolsbpmexample.Order" var="order">
         <transition to="sendToDrools" />
     </mule-receive>
@@ -9,6 +10,7 @@
     <mule-send name="sendToDrools" expr="#{order}" endpoint="DroolsEndpoint" exchange-pattern="request-response" var="order">
         <transition to="sendToWarehouse" />
     </mule-send>
+    
     
     <decision name="sendToWarehouse">
         <transition to="sendToWarehouseA">
@@ -34,5 +36,6 @@
     <end name="routingSuccessful" />
 
     <end name="routingFailed" />
+
 
 </process>
