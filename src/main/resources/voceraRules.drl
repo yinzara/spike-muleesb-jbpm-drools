@@ -2,11 +2,17 @@
 package com.vocera.drools
 
 //list any import classes here.
+import org.joda.time.DateTime;
+import java.util.Date;
 import com.vocera.drools.event.Vitals;
 import com.vocera.drools.fact.Patient;
 import com.vocera.drools.fact.Fever;
 import com.vocera.drools.fact.TemperatureThreshold;
+import org.mule.MessageExchangePattern;
 global org.mule.module.bpm.MessageService mule;
+
+
+dialect "mvel"
 
 //declare any global variables here
 declare Patient
@@ -19,29 +25,118 @@ end
 
 declare Fever
 	@role( fact )
-	@timestamp( started )
+end
+
+declare DangerousFever
+	patient : Patient @key
 end
 
 declare Vitals
+	@expires(25m)
 	@role( event )
-	@timestamp( collected )
 end
-
 
 rule "Patient temperature over 101 degree threshold for 15 minutes with at least 3 readings"
 	lock-on-active
-    when
-	    accumulate(
-	        Vitals( $temp : temperature, $patient : patient , $dateTime : collected ) over window:time( 15m ); 
-	        $avgTemp : average( $temp ),
-	        $oldestReading : min( $dateTime ) ,
-	        $totalReadings : count( this );
-	        $avgTemp > 101,
-	        $totalReadings > 3 )
+	salience 10
+    when    	
+    	$patient : Patient()
+    	not ( Fever( patient == $patient ) )
+	    $totalCount : Number() from accumulate(
+	        vital : Vitals( patient == $patient ) over window:time( 15m ),
+	        count( vital ) 
+	    )
+	    $avgTemp : Number() from accumulate(
+	        vital : Vitals( patient == $patient ) over window:time( 15m ),
+	        average( vital.temperature ) 
+	    )
+	    $oldestReading : Number() from accumulate(
+	        vital : Vitals( patient == $patient ) over window:time( 15m ),
+	        min( vital.collected.getMillis )
+	    )
+	    Number(doubleValue > 100.0) from $avgTemp
+	    Number(intValue > 3) from $totalCount
     then
-        insertLogical(
-        	new Fever( $patient, $oldestReading )
-        );
+        insert(
+        	 new Fever( $patient, new DateTime($oldestReading.longValue()) ) 
+       );
+        System.out.println("Fever detected for patient " + $patient.getId + " starting at " + new DateTime($oldestReading.longValue()))
+end
 
+rule "Update fever average temperature"
+	no-loop true
+	salience -20
+	when
+		$fever : Fever($patient : patient, $started : started.getMillis)		
+		$avgTemp : Number() from accumulate(
+	        vital : Vitals( patient == $patient , collected.getMillis >= $started ),
+	        average( vital.temperature ) 
+	    )
+	    Fever(averageTemp != $avgTemp.doubleValue) from $fever
+	then
+		System.out.println("Setting average temperature for patient " + $patient.getId + " fever of " + $avgTemp)
+		modify ($fever) {
+			setAverageTemp( $avgTemp.doubleValue )
+		}
+	
+end
+
+rule "Very dangerous fever"
+	salience -50
+	when
+		$patient : Patient()
+		exists Fever( averageTemp >= 101.5 , patient == $patient)
+	then
+		DangerousFever dangerous = new DangerousFever()
+		dangerous.setPatient($patient)
+		insertLogical(dangerous)
+end
+
+rule "Dangerous fever seen"
+	when		
+		DangerousFever($patient : patient)		
+	then 
+		System.out.println("Very dangerous fever for " + $patient.getId)
+end
+
+rule "Dangerous fever over"
+	when
+		$patient : Patient()
+		not ( DangerousFever(patient == $patient) )
+	then 
+		System.out.println("Dangerous fever for " + $patient.getId + " is gone")
+end
+
+rule "Patient temperature returned to normal"
+	lock-on-active
+	salience 10
+    when    	
+    	$patient : Patient()
+    	$fever : Fever(patient == $patient , $started : started.getMillis)
+	    $totalCount : Number() from accumulate(
+	        vital : Vitals( patient == $patient, collected.getMillis > $started ) over window:time( 15m ),
+	        count( vital ) 
+	    )
+	    $avgTemp : Number() from accumulate(
+	        vital : Vitals( patient == $patient, collected.getMillis > $started ) over window:time( 15m ),
+	        average( vital.temperature ) 
+	    )
+	    $oldestReading : Number() from accumulate(
+	        vital : Vitals( patient == $patient, collected.getMillis > $started ) over window:time( 15m ),
+	        min( vital.collected.getMillis )
+	    )
+	    Number(doubleValue <= 100.0) from $avgTemp
+	    Number(intValue > 3) from $totalCount
+    then
+    	retract($fever)
+end
+
+rule "Fever gone"
+	salience -60
+	when
+		$patient : Patient()
+		not ( Fever( patient == $patient ) )
+	then
+		System.out.println("Fever is gone for patient " + $patient)
 end
 

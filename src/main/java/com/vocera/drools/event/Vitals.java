@@ -2,33 +2,42 @@ package com.vocera.drools.event;
 
 import java.io.Serializable;
 
-import javax.validation.constraints.Min;
-
 import org.joda.time.DateTime;
 
 import com.vocera.drools.fact.Patient;
 
 public class Vitals implements Serializable {
-	
+
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 2367140572819425117L;
 
-	@Min(0)
 	private short systolic;
-	
-	@Min(0)
+
 	private short diastolic;
-	
-	@Min(0)
+
 	private short pulse;
-	
-	private short temperature;
-	
+
+	private double temperature;
+
 	private DateTime collected;
-	
+
 	private Patient patient;
+
+	public Vitals() {
+		super();
+	}
+
+	public Vitals(short systolic, short diastolic, short pulse, double temperature, DateTime collected, Patient patient) {
+		super();
+		this.systolic = systolic;
+		this.diastolic = diastolic;
+		this.pulse = pulse;
+		this.temperature = temperature;
+		this.collected = collected;
+		this.patient = patient;
+	}
 
 	public short getSystolic() {
 		return systolic;
@@ -54,11 +63,11 @@ public class Vitals implements Serializable {
 		this.pulse = pulse;
 	}
 
-	public short getTemperature() {
+	public double getTemperature() {
 		return temperature;
 	}
 
-	public void setTemperature(short temperature) {
+	public void setTemperature(double temperature) {
 		this.temperature = temperature;
 	}
 
@@ -78,5 +87,8 @@ public class Vitals implements Serializable {
 		this.patient = patient;
 	}
 	
-	
+	public String toString() {
+		return "Vitals(systolic = " + systolic + ", diastolic = " + diastolic + ", pulse = " + pulse+ ", temperature = " + temperature + ", collected = " + collected + ", patient = " + patient + ")"; 
+	}
+
 }

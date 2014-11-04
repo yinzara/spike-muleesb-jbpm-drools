@@ -53,6 +53,8 @@ public class Patient implements Serializable {
 		this.dateOfBirth = dateOfBirth;
 	}
 	
-	
+	public String toString() {
+		return "Patient( id = " + id + ", firstName = " + firstName + ", lastName = " + lastName + ", dateOfBirth = " + dateOfBirth + ")";
+	}
 	
 }
